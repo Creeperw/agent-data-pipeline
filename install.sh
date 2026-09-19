@@ -115,13 +115,16 @@ say ""
 say "────────────────────────────────────────────────────────"
 say "接下来："
 say ""
-if [ -f "$ENV_FILE" ] && ! grep -qE '^DEEPSEEK_API_KEY=sk-[^x]' "$ENV_FILE" 2>/dev/null; then
+# 与界面同一套规则：key 为空、或还是模板里的占位符（sk-xxxx…），都算没填。
+if [ -f "$ENV_FILE" ] \
+   && grep -qE '^DEEPSEEK_API_KEY=[^[:space:]]' "$ENV_FILE" 2>/dev/null \
+   && ! grep -qE '^DEEPSEEK_API_KEY=(sk-)?[xX*]{6,}$' "$ENV_FILE" 2>/dev/null; then
+  N=1
+else
   say "  1. 编辑 agent/.env，至少填好这三项："
   say "       DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL / AGENT_DISTILL_MODEL"
   say "     也可以启动控制台后点顶栏齿轮填。"
   N=2
-else
-  N=1
 fi
 if [ "$USE_VENV" = "1" ]; then
   say "  $N. 启动控制台："

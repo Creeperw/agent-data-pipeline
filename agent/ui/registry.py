@@ -1858,6 +1858,11 @@ ENV_PATH = AGENT_ROOT / ".env"
 # 值里出现这些字符会把 .env 的一行拆成两行，直接拒绝。
 _ENV_FORBIDDEN_RE = re.compile(r"[\r\n\x00]")
 
+# 模板里的占位写法：整串只有一个重复字符（sk-xxxx…、****）。真实密钥不会长成
+# 这样，所以只要值非空就当成真凭据、把占位符当「未配置」处理，判定很稳。
+# 只用在 secret 类型字段上——端点、模型名那类值本来就可能是真实配置。
+_PLACEHOLDER_SECRET_RE = re.compile(r"^(?:sk-)?[xX*]{6,}$")
+
 
 @dataclass(frozen=True)
 class ConfigField:
@@ -2057,6 +2062,15 @@ def _effective_config(
 
     file_value = file_values.get(key, "")
     env_value = os.environ.get(key, "")
+    field = CONFIG_FIELD_BY_KEY.get(key)
+    # 占位符值非空，但显然不是真凭据：当「未配置」处理。否则照模板装完、一个
+    # key 都不填，界面也显示绿色的「模型接入 ✓」，跑起来全是鉴权错误。
+    if field is not None and field.type == "secret":
+        if _PLACEHOLDER_SECRET_RE.match(file_value):
+            file_value = ""
+        if _PLACEHOLDER_SECRET_RE.match(env_value):
+            env_value = ""
+
     if env_value and env_value != file_value:
         return env_value, "env", key
     if file_value:
@@ -2064,7 +2078,6 @@ def _effective_config(
     if env_value:
         return env_value, "env", key
 
-    field = CONFIG_FIELD_BY_KEY.get(key)
     if field is None:
         return "", "unset", key
     if field.default:
@@ -2090,6 +2103,7 @@ def missing_required_config() -> list[tuple[str, str]]:
     """返回 ``[(键, 界面上的名字)]``，列出还没配好的必需项。
 
     运行前拦截与配置快照共用同一份判断，避免「界面说配好了、跑起来却说没配」。
+    模板里的密钥占位符（``sk-xxxx…``）也算没配好，理由见 ``_effective_config``。
     """
     file_values = read_env_file()
     missing: list[tuple[str, str]] = []

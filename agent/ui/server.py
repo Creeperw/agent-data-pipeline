@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import shutil
 import sys
 import time
@@ -301,7 +300,9 @@ def create_app() -> FastAPI:
             "agentRoot": str(AGENT_ROOT),
             "modelPath": str(tokenizer_path),
             "modelPathExists": tokenizer_path.exists(),
-            "apiKeyConfigured": bool(os.getenv("DEEPSEEK_API_KEY")),
+            # 与徽章、运行前拦截同一份判断：只看环境变量非空的话，模板里的
+            # sk-xxxx 占位符会让它误报成已配置。
+            "apiKeyConfigured": not any(key == "DEEPSEEK_API_KEY" for key, _ in missing_config),
             "missingConfig": [{"key": key, "label": label} for key, label in missing_config],
             "configReady": not missing_config,
             "domains": domains,
