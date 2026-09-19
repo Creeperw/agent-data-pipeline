@@ -163,6 +163,10 @@ python -m agent.pipeline_launcher --help
 1. 按上文创建 `agent/.env`；
 2. 准备自己的领域包与 seed 文件（`agent/domains/<name>/seeds.jsonl`）。
 
+## 许可证
+
+MIT，见 [`LICENSE`](LICENSE)。可以自由使用、修改、再分发（保留版权声明即可）。
+
 ## 文档
 
 | 文档 | 内容 |
