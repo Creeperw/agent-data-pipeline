@@ -1,0 +1,6 @@
+{
+  "enabled": [
+    "calculate_bmi",
+    "get_current_datetime"
+  ]
+}

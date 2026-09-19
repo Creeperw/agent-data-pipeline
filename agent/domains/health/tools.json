@@ -1,0 +1,9 @@
+{
+  "enabled": [
+    "calculate_bmi",
+    "calculate_daily_water_intake",
+    "calculate_target_heart_rate",
+    "generate_random_number",
+    "get_current_datetime"
+  ]
+}

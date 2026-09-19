@@ -1,0 +1,3 @@
+{"id":"cs_001","domain":"customer_service","user_query":"我的订单 A123 一直没发货，帮我看看怎么办？","order_id":"A123","scenario":"order_status","metadata":{"source":"demo","difficulty":"easy"}}
+{"id":"cs_002","domain":"customer_service","user_query":"我想退货，但不知道规则是什么。","scenario":"refund_policy","metadata":{"source":"demo","difficulty":"easy"}}
+{"id":"cs_003","domain":"customer_service","user_query":"物流单号 SF123456 已经两天没更新了，正常吗？","tracking_number":"SF123456","scenario":"shipping_status","metadata":{"source":"demo","difficulty":"medium"}}

@@ -1,0 +1,28 @@
+# 凭据。填入自己的 key 后不要提交，一旦进入 git 历史就撤不回来了。
+# 复制 agent/.env.example 得到 agent/.env。
+#
+# `agent/.env.*` 这条通配是必须的：改 key 前顺手备份（`cp .env .env.bak`）是很自然
+# 的做法，只写 `agent/.env` 挡不住 `.env.bak-20260920` 这类名字。
+agent/.env
+agent/.env.*
+!agent/.env.example
+
+# 数据与产物。体量大，且统计报告里会记录本机绝对路径，不适合入库。
+agent/data/
+agent/outputs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 编辑器与系统
+.history/
+.idea/
+.DS_Store
+Thumbs.db
+*.bak
+*.orig
+*.swp
