@@ -4,7 +4,9 @@
 const state = {
   meta: null,
   domain: "health",
-  prefix: "valid",
+  // 产物文件名前缀，形如 ``health_talent_train``。留空表示「按当前项目自动取」，
+  // 真正的值在 loadMeta 拿到项目清单后由 renderPrefixUi 填上。
+  prefix: "",
   stages: [],
   selected: new Set(),
   expanded: new Set(),    // 展开了参数区的阶段 id
@@ -218,7 +220,7 @@ function bindTabs() {
 
 function bindActions() {
   $("domain").addEventListener("change", (event) => {
-    state.domain = event.target.value;
+    if (!selectDomain(event.target.value)) return;
     // 换了项目，弹窗里还是上一个项目的文件，直接关掉免得看错。
     closePreview();
     resetStatsUi();
@@ -227,11 +229,8 @@ function bindActions() {
     refreshAll({ quiet: true });
   });
   $("prefix").addEventListener("change", (event) => {
-    state.prefix = event.target.value.trim() || "valid";
-    closePreview();
-    resetStatsUi();
-    resetReportUi();
-    refreshAll({ quiet: true });
+    setPrefix(event.target.value);
+    commitPrefix();
   });
   $("btn-refresh").addEventListener("click", () => {
     withBusy($("btn-refresh"), "刷新中…", () => refreshAll());
@@ -367,8 +366,91 @@ async function refreshAll({ quiet = false } = {}) {
   writeStoredView(showView(failed[0].view));
 }
 
+// ---------------------------------------------------------------------------
+// 输出前缀（项目隔离）
+// ---------------------------------------------------------------------------
+// 产物文件名是 ``<项目名>_<数据集>_<阶段>.jsonl``，例如 health_talent_train_executor.jsonl。
+// 这样同一台机器上多个项目的数据即使被收集到一起也认得出出处，训练集与测试集也
+// 不会互相覆盖。前缀可以在顶栏手填，所以这里只负责：换项目时把它从上一个项目的
+// 档位换到新项目的同一档，以及列出「训练数据 / 测试数据」两个快捷按钮。
+
+/** 某个项目声明了哪几种数据集。meta 里没有这一项时返回空数组。 */
+function splitsOf(name = state.domain, meta = state.meta) {
+  const domain = ((meta && meta.domains) || []).find((item) => item.name === name);
+  return (domain && domain.datasetSplits) || [];
+}
+
+/** 项目的默认前缀，即声明里的第一档（基类默认是「训练数据」）。 */
+function defaultPrefixOf(name = state.domain) {
+  const first = splitsOf(name)[0];
+  return (first && first.prefix) || `${name}_train`;
+}
+
+/** 换项目时前缀怎么走：同档位换算，手填的原样保留。
+ *
+ * 前缀是项目隔离用的——切了项目还挂着上一个项目的名字，读到的就是别人的产物。
+ * 所以原来那一档（训练数据 / 测试数据……）在新项目里换成同一档；而用户手填的
+ * 名字（例如 smoke）两边都对不上任何一档，就原样保留。
+ */
+function pickPrefix(prefix, fromSplits, toSplits, fallback) {
+  const source = fromSplits.find((item) => item.prefix === prefix);
+  const hit = source && toSplits.find((item) => item.split === source.split);
+  if (hit) return hit.prefix;
+  if (prefix) return prefix;
+  return (toSplits[0] && toSplits[0].prefix) || fallback;
+}
+
+/** 高亮当前落在哪一档数据集上；手填的名字不属于任何一档，就都不亮。 */
+function applySplitHighlight() {
+  for (const button of $("split-pills").querySelectorAll(".split-pill")) {
+    button.classList.toggle("active", button.dataset.prefix === state.prefix);
+  }
+}
+
+/** 前缀输入框 + 数据集快捷按钮一起重画。 */
+function renderPrefixUi() {
+  const pills = $("split-pills");
+  pills.innerHTML = "";
+  for (const item of splitsOf()) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "split-pill";
+    button.dataset.prefix = item.prefix;
+    button.textContent = item.label;
+    button.title = `产物文件名形如 ${item.prefix}_<阶段>.jsonl`;
+    button.addEventListener("click", () => {
+      setPrefix(item.prefix);
+      commitPrefix();
+    });
+    pills.appendChild(button);
+  }
+  const input = $("prefix");
+  input.value = state.prefix;
+  input.placeholder = defaultPrefixOf();
+  applySplitHighlight();
+}
+
+/** 写入前缀；留空表示「用当前项目的默认档」。 */
+function setPrefix(value) {
+  state.prefix = (value || "").trim() || defaultPrefixOf();
+  $("prefix").value = state.prefix;
+  applySplitHighlight();
+}
+
+/** 前缀定下来之后重拉所有视图，否则界面还停在上一档数据上。 */
+function commitPrefix() {
+  closePreview();
+  resetStatsUi();
+  resetReportUi();
+  refreshAll({ quiet: true });
+}
+
 async function loadMeta() {
   const meta = await api("/api/meta");
+  // 前缀要按新项目的档位换算，得先用旧 meta 认出「现在是哪一档」——所以这两行
+  // 必须排在 state.meta 被覆盖之前。
+  const wasPrefix = state.prefix;
+  const wasSplits = splitsOf();
   state.meta = meta;
   $("version").textContent = `v${meta.version}`;
 
@@ -383,10 +465,16 @@ async function loadMeta() {
     select.appendChild(option);
   }
   const preferred = meta.domains.find((item) => item.name === meta.defaultDomain) || meta.domains[0];
+  const target = preferred ? preferred.name : state.domain;
   if (preferred) {
-    state.domain = preferred.name;
-    select.value = preferred.name;
+    state.domain = target;
+    select.value = target;
   }
+  state.prefix = pickPrefix(
+    wasPrefix, wasSplits, splitsOf(target, meta),
+    meta.defaultPrefix || defaultPrefixOf(target),
+  );
+  renderPrefixUi();
 
   // 「API」徽章看的是完整模型接入，不只是有没有 Key：端点或教师模型没填，
   // 作业同样跑不起来，只报 Key 会让人白排查一轮。
@@ -1955,7 +2043,8 @@ async function loadReport() {
  */
 function exportReportMarkdown() {
   if (!reportUi.text) { toast("还没有报告可以导出。", "err"); return; }
-  const name = `${state.domain}_${state.prefix}_data_stats.md`;
+  // 前缀本身就带了项目名（health_talent_train），别再拼一次 state.domain。
+  const name = `${state.prefix}_data_stats.md`;
   const url = `/api/artifacts/download?key=data_stats_md`
     + `&domain=${encodeURIComponent(state.domain)}&prefix=${encodeURIComponent(state.prefix)}`;
   const link = document.createElement("a");
@@ -2128,7 +2217,7 @@ function reportSectionStats(blocks) {
   return stats;
 }
 
-/** 章节标题形如「valid_x.jsonl（final_prompt）」，拆成文件名 + 类型。 */
+/** 章节标题形如「health_train_planner_trajectories.jsonl（final_prompt）」，拆成文件名 + 类型。 */
 function splitReportTitle(title) {
   const matched = /^(.*?)（(.*)）\s*$/.exec(title);
   return matched ? { name: matched[1], type: matched[2] } : { name: title, type: "" };
@@ -2885,8 +2974,14 @@ function selectDomain(name) {
   const select = $("domain");
   const found = Array.from(select.options).some((option) => option.value === name);
   if (!found) return false;
+  const previous = state.domain;
   select.value = name;
   state.domain = name;
+  // 前缀跟着项目走同一档，否则切完项目还挂着上一个项目的名字，读的是别人的产物。
+  if (previous !== name) {
+    state.prefix = pickPrefix(state.prefix, splitsOf(previous), splitsOf(name), defaultPrefixOf(name));
+    renderPrefixUi();
+  }
   return true;
 }
 

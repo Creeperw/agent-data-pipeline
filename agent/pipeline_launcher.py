@@ -25,13 +25,15 @@ import sys
 from pathlib import Path
 
 try:
-    from .config import PROJECT_ROOT, safe_path_part
+    from .config import PROJECT_ROOT, output_prefix_for, safe_path_part
 except ImportError:  # Allows: python agent/pipeline_launcher.py
-    from config import PROJECT_ROOT, safe_path_part  # type: ignore
+    from config import PROJECT_ROOT, output_prefix_for, safe_path_part  # type: ignore
 
 
 DEFAULT_DOMAIN = "health"
-DEFAULT_PREFIX = "valid"
+# 前缀不带项目名就无法区分同名产物出自哪个项目，所以默认值按「<领域名>_<数据集>」
+# 现算（见 config.output_prefix_for），和界面、领域包里的数据集声明保持一致。
+DEFAULT_SPLIT = "train"
 DEFAULT_STATS_FORMAT = "markdown"
 
 
@@ -70,7 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--domain", default=DEFAULT_DOMAIN, help="领域名，默认 health。")
     parser.add_argument("--seed-input", type=Path, default=None, help="seed JSONL 路径；不传则默认 agent/domains/<domain>/seeds.jsonl。")
     parser.add_argument("--output-dir", type=Path, default=None, help="输出目录；不传则默认 agent/outputs/<domain>。")
-    parser.add_argument("--prefix", default=DEFAULT_PREFIX, help="输出文件名前缀，默认 valid。")
+    parser.add_argument("--prefix", default=None, help="输出文件名前缀，默认 <领域名>_train。")
     parser.add_argument("--max-samples", type=int, default=None, help="传给合成阶段的样本上限；不传则使用各模块默认值。")
     parser.add_argument("--max-workers", type=int, default=None, help="传给合成阶段的并发数；不传则使用各模块默认值。")
     parser.add_argument("--stats-format", choices=["markdown", "json"], default=DEFAULT_STATS_FORMAT, help="统计报告输出格式。")
@@ -90,7 +92,7 @@ def main() -> None:
     output_dir = build_output_dir(domain, args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    prefix = safe_path_part(args.prefix, DEFAULT_PREFIX)
+    prefix = safe_path_part(args.prefix, output_prefix_for(domain, DEFAULT_SPLIT))
     planner_trajectory = stage_path(output_dir, prefix, "planner_trajectories")
     planner_step_sft = stage_path(output_dir, prefix, "planner_step_sft")
     planner_final_prompt = stage_path(output_dir, prefix, "planner_final_prompt")

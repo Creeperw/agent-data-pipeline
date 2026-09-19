@@ -25,22 +25,28 @@ from typing import Any, Callable, Literal
 try:  # 正常以 ``agent.ui.registry`` 导入
     from ..config import (
         AGENT_ROOT,
+        DEFAULT_DATASET_SPLIT,
         OUTPUT_DOMAIN_NAME,
         PROJECT_ROOT,
         QWEN_BASE_MODEL_PATH,
+        output_prefix_for,
         safe_path_part,
     )
+    from ..core.domain import load_domain
 except ImportError:  # pragma: no cover - 兼容 ``python agent/ui/server.py``
     import sys
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from config import (  # type: ignore
         AGENT_ROOT,
+        DEFAULT_DATASET_SPLIT,
         OUTPUT_DOMAIN_NAME,
         PROJECT_ROOT,
         QWEN_BASE_MODEL_PATH,
+        output_prefix_for,
         safe_path_part,
     )
+    from core.domain import load_domain  # type: ignore
 
 
 ParamType = Literal["int", "float", "str", "bool", "choice", "path", "text"]
@@ -62,8 +68,64 @@ def seed_path(domain: str) -> Path:
 
 
 def stage_file(domain: str, prefix: str, stem: str, suffix: str = ".jsonl") -> Path:
-    """``agent/outputs/<domain>/<prefix>_<stem><suffix>``，与 launcher 一致。"""
-    return domain_output_dir(domain) / f"{safe_path_part(prefix, 'valid')}_{stem}{suffix}"
+    """``agent/outputs/<domain>/<prefix>_<stem><suffix>``，与 launcher 一致。
+
+    前缀为空时回落到这个项目的默认前缀（``<领域名>_train`` 之类），而不是某个
+    全局常量——否则新建一个领域时会去读另一个项目的产物。
+    """
+    return domain_output_dir(domain) / f"{safe_path_part(prefix, default_prefix(domain))}_{stem}{suffix}"
+
+
+# 领域包声明的数据集：{领域名: (spec.py 的 mtime, {split: 名字})}。
+# stage_file 每渲染一次产物列表就要解析前缀，不能每次都完整导入领域包（那会连带
+# 合并全局工具、读一堆文件）。用 spec.py 的 mtime 当缓存键，用户在界面里改完
+# spec.py 立刻能生效。
+_SPLIT_CACHE: dict[str, tuple[float, dict[str, str]]] = {}
+_FALLBACK_SPLITS: dict[str, str] = {"train": "训练数据", "valid": "测试数据"}
+
+
+def _split_map(domain: str) -> dict[str, str]:
+    """这个领域声明了哪几种数据集；读不到就用通用的 train/valid。"""
+    spec_file = domain_dir(domain) / "spec.py"
+    try:
+        stamp = spec_file.stat().st_mtime
+    except OSError:
+        return dict(_FALLBACK_SPLITS)
+
+    cached = _SPLIT_CACHE.get(domain)
+    if cached is not None and cached[0] == stamp:
+        return cached[1]
+
+    try:
+        splits = dict(load_domain(domain).dataset_splits or _FALLBACK_SPLITS)
+    except Exception:  # noqa: BLE001 - spec.py 有语法错误时也要能打开界面
+        splits = dict(_FALLBACK_SPLITS)
+    if not splits:
+        splits = dict(_FALLBACK_SPLITS)
+    _SPLIT_CACHE[domain] = (stamp, splits)
+    return splits
+
+
+def default_prefix(domain: str, split: str | None = None) -> str:
+    """这个项目的默认输出前缀，即 ``<领域名>_<split>``。
+
+    不传 split 取领域包声明的第一个（基类默认是 ``train``）。
+    """
+    key = (split or "").strip()
+    if not key:
+        key = next(iter(_split_map(domain)), DEFAULT_DATASET_SPLIT)
+    return output_prefix_for(domain, key)
+
+
+def dataset_splits(domain: str) -> list[dict[str, str]]:
+    """``[{"split": "train", "label": "训练数据", "prefix": "<领域>_train"}]``。
+
+    界面据它渲染快捷按钮。前缀本身仍可手填，这里只是把常用的几种列出来。
+    """
+    return [
+        {"split": key, "label": label, "prefix": output_prefix_for(domain, key)}
+        for key, label in _split_map(domain).items()
+    ]
 
 
 @dataclass(frozen=True)
@@ -1144,6 +1206,10 @@ def find_domains() -> list[dict[str, Any]]:
                 "seedPath": str(seeds),
                 "seedLines": count_lines(seeds) if has_seeds else 0,
                 "seedMtime": seed_mtime,
+                # 每个项目自己的默认前缀与可选数据集。带上这两项，界面切换项目时
+                # 不用再等一次请求就能把前缀换成新项目的。
+                "defaultPrefix": default_prefix(child.name),
+                "datasetSplits": dataset_splits(child.name),
             }
         )
     return domains
@@ -1445,7 +1511,33 @@ def duplicate_domain(
             domain_output_dir(source_name), domain_output_dir(target_name), ignore=_DOMAIN_IGNORE
         )
         notes.append("已连同产物一起复制。")
+        # 复制过来的产物名里还是源项目的名字，不改的话副本读不到自己的数据。
+        renamed = _rename_domain_prefix_files(domain_output_dir(target_name), source_name, target_name)
+        if renamed:
+            notes.append(f"副本产物名里的 {source_name}_ 前缀改为 {target_name}_，共 {renamed} 个文件。")
     return {"domain": describe_domain(target_name), "notes": notes, "template": source_name}
+
+
+def _rename_domain_prefix_files(directory: Path, old_name: str, new_name: str) -> int:
+    """把产物文件名里的项目名换成新的，返回改了几个。
+
+    前缀是 ``<领域名>_<数据集>``，所以领域一改名，「旧名_train_*」就再也匹配不上
+    新项目的默认前缀了——不跟着改，用户会以为产物凭空消失。只动 ``<旧名>_`` 开头
+    的文件；手填过别的前缀（例如 ``smoke_``）不属于任何项目，原样保留。
+    """
+    if not directory.is_dir():
+        return 0
+    moved = 0
+    head = f"{old_name}_"
+    for path in sorted(directory.iterdir()):
+        if not path.is_file() or not path.name.startswith(head):
+            continue
+        target = path.with_name(f"{new_name}_{path.name[len(head):]}")
+        if target.exists():
+            continue
+        path.rename(target)
+        moved += 1
+    return moved
 
 
 def rename_domain(name: str, new_name: str, display_name: str | None = None) -> dict[str, Any]:
@@ -1472,6 +1564,10 @@ def rename_domain(name: str, new_name: str, display_name: str | None = None) -> 
         else:
             shutil.move(str(old_outputs), str(new_outputs))
             notes.append(f"产物目录已改为 {new_outputs.name}。")
+            # 产物名里嵌着项目名，不跟着改就再也读不出来了。
+            renamed = _rename_domain_prefix_files(new_outputs, old_name, target_name)
+            if renamed:
+                notes.append(f"产物名里的 {old_name}_ 前缀同步改为 {target_name}_，共 {renamed} 个文件。")
 
     # 旧的字节码缓存带着老模块名，改名后不再被使用，直接清掉避免混淆。
     shutil.rmtree(target / "__pycache__", ignore_errors=True)
@@ -2716,7 +2812,9 @@ __all__ = [
     "count_lines",
     "create_domain",
     "create_global_tool",
+    "dataset_splits",
     "default_domain",
+    "default_prefix",
     "delete_domain",
     "delete_global_tool",
     "describe_config",

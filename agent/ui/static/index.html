@@ -74,8 +74,11 @@
       </label>
       <label class="field inline">
         <span>输出前缀</span>
-        <input id="prefix" type="text" value="valid" size="10" spellcheck="false">
+        <input id="prefix" type="text" value="" size="18" spellcheck="false"
+               placeholder="项目名_数据集"
+               title="产物文件名前缀；留空按当前项目自动取">
       </label>
+      <div class="split-pills" id="split-pills" role="group" aria-label="数据集前缀"></div>
       <button id="btn-refresh" class="ghost" title="重新读取磁盘状态">刷新</button>
       <button class="icon-btn" id="btn-config" type="button" title="运行时配置（教师模型接入 / 超时）" aria-label="运行时配置">
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>

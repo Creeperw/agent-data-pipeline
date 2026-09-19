@@ -108,7 +108,7 @@ def main() -> int:
         values = {param.key: sample_value(param) for param in stage.params}
         ctx = RunContext(
             domain="health_talent",
-            prefix="valid",
+            prefix="health_talent_valid",
             python=sys.executable,
             seed_input=AGENT_ROOT / "domains/health_talent/seeds.jsonl",
             output_dir=AGENT_ROOT / "outputs/health_talent",

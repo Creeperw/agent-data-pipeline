@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 try:  # 正常以 ``agent.ui.server`` 导入
-    from ..config import AGENT_ROOT, PROJECT_ROOT
+    from ..config import AGENT_ROOT, OUTPUT_DOMAIN_NAME, PROJECT_ROOT
     from . import __version__
     from .jobs import JobManager, stream_job
     from .registry import (
@@ -34,7 +34,9 @@ try:  # 正常以 ``agent.ui.server`` 导入
         count_lines,
         create_domain,
         create_global_tool,
+        dataset_splits,
         default_domain,
+        default_prefix,
         delete_domain,
         delete_global_tool,
         describe_config,
@@ -65,7 +67,7 @@ try:  # 正常以 ``agent.ui.server`` 导入
     from .registry import DOMAINS_DIR, OUTPUTS_DIR
 except ImportError:  # pragma: no cover - 兼容 ``python agent/ui/server.py``
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from agent.config import AGENT_ROOT, PROJECT_ROOT  # type: ignore
+    from agent.config import AGENT_ROOT, OUTPUT_DOMAIN_NAME, PROJECT_ROOT  # type: ignore
     from agent.ui import __version__  # type: ignore
     from agent.ui.jobs import JobManager, stream_job  # type: ignore
     from agent.ui.registry import (  # type: ignore
@@ -80,7 +82,9 @@ except ImportError:  # pragma: no cover - 兼容 ``python agent/ui/server.py``
         count_lines,
         create_domain,
         create_global_tool,
+        dataset_splits,
         default_domain,
+        default_prefix,
         delete_domain,
         delete_global_tool,
         describe_config,
@@ -195,11 +199,20 @@ def _safe_domain(domain: str) -> str:
     return cleaned
 
 
-def _safe_prefix(prefix: str) -> str:
-    from .registry import safe_path_part
+def _safe_prefix(prefix: str, domain: str = "") -> str:
+    """校验产物前缀；留空表示「用这个项目的默认前缀」。
 
-    cleaned = safe_path_part(prefix, "valid")
-    if cleaned != prefix:
+    默认值按领域现算（``<领域>_train``），而不是某个全局常量：领域一换，前缀就
+    该跟着换，否则会去读另一个项目的产物。
+    """
+    from .registry import default_prefix, safe_path_part
+
+    fallback = default_prefix(domain or OUTPUT_DOMAIN_NAME)
+    text = (prefix or "").strip()
+    if not text:
+        return fallback
+    cleaned = safe_path_part(text, fallback)
+    if cleaned != text:
         raise HTTPException(status_code=400, detail=f"非法前缀：{prefix!r}")
     return cleaned
 
@@ -308,6 +321,10 @@ def create_app() -> FastAPI:
             "domains": domains,
             "defaultDomain": default_domain(domains),
             "defaultPipeline": list(DEFAULT_PIPELINE),
+            # 当前项目的输出前缀默认值与可选数据集：界面切换到别的项目时按这个重算，
+            # 免得停在旧项目的前缀上读另一个项目的产物。
+            "defaultPrefix": default_prefix(default_domain(domains) or OUTPUT_DOMAIN_NAME),
+            "datasetSplits": dataset_splits(default_domain(domains) or OUTPUT_DOMAIN_NAME),
             "artifacts": [
                 {"key": item.key, "label": item.label, "kind": item.kind, "description": item.description}
                 for item in ARTIFACTS
@@ -335,10 +352,10 @@ def create_app() -> FastAPI:
     @app.get("/api/stages")
     def api_stages(
         domain: str = Query("health"),
-        prefix: str = Query("valid"),
+        prefix: str = Query(""),
     ) -> dict[str, Any]:
         domain = _safe_domain(domain)
-        prefix = _safe_prefix(prefix)
+        prefix = _safe_prefix(prefix, domain)
         payload = []
         for stage in STAGES:
             item = stage.to_json()
@@ -357,10 +374,10 @@ def create_app() -> FastAPI:
     @app.get("/api/artifacts")
     def api_artifacts(
         domain: str = Query("health"),
-        prefix: str = Query("valid"),
+        prefix: str = Query(""),
     ) -> dict[str, Any]:
         domain = _safe_domain(domain)
-        prefix = _safe_prefix(prefix)
+        prefix = _safe_prefix(prefix, domain)
         return {
             "outputDir": str(domain_output_dir(domain)),
             "artifacts": [_artifact_status(item.key, domain, prefix) for item in ARTIFACTS],
@@ -370,12 +387,12 @@ def create_app() -> FastAPI:
     def api_preview(
         key: str = Query(...),
         domain: str = Query("health"),
-        prefix: str = Query("valid"),
+        prefix: str = Query(""),
         offset: int = Query(0, ge=0, le=200_000),
         limit: int = Query(20, ge=1, le=PREVIEW_MAX_ROWS),
     ) -> dict[str, Any]:
         domain = _safe_domain(domain)
-        prefix = _safe_prefix(prefix)
+        prefix = _safe_prefix(prefix, domain)
         if key not in ARTIFACT_BY_KEY:
             raise HTTPException(status_code=404, detail=f"未知产物：{key}")
         artifact = ARTIFACT_BY_KEY[key]
@@ -418,7 +435,7 @@ def create_app() -> FastAPI:
     def api_download(
         key: str = Query(...),
         domain: str = Query("health"),
-        prefix: str = Query("valid"),
+        prefix: str = Query(""),
     ) -> FileResponse:
         """按原文件下载产物。
 
@@ -426,7 +443,7 @@ def create_app() -> FastAPI:
         HTTP 下载更稳，文件名也由服务端定。
         """
         domain = _safe_domain(domain)
-        prefix = _safe_prefix(prefix)
+        prefix = _safe_prefix(prefix, domain)
         if key not in ARTIFACT_BY_KEY:
             raise HTTPException(status_code=404, detail=f"未知产物：{key}")
         path = artifact_path(key, domain, prefix)
@@ -447,7 +464,7 @@ def create_app() -> FastAPI:
         if not isinstance(stage_ids, list) or not stage_ids:
             raise HTTPException(status_code=400, detail="请至少选择一个阶段。")
         domain = _safe_domain(str(payload.get("domain") or "health"))
-        prefix = _safe_prefix(str(payload.get("prefix") or "valid"))
+        prefix = _safe_prefix(str(payload.get("prefix") or ""), domain)
         force = bool(payload.get("force"))
         params = payload.get("params") or {}
 
@@ -748,10 +765,10 @@ def create_app() -> FastAPI:
     @app.get("/api/stats")
     def api_stats(
         domain: str = Query("health"),
-        prefix: str = Query("valid"),
+        prefix: str = Query(""),
     ) -> dict[str, Any]:
         domain = _safe_domain(domain)
-        prefix = _safe_prefix(prefix)
+        prefix = _safe_prefix(prefix, domain)
         json_path = artifact_path("data_stats_json", domain, prefix)
         md_path = artifact_path("data_stats_md", domain, prefix)
         payload: dict[str, Any] = {

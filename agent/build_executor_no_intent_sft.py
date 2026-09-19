@@ -18,9 +18,9 @@ merged into final prompt JSONL directly:
     --output agent/outputs/health/valid_executor_no_intent_sft.jsonl
 
     python -m agent.merge_final_sft \
-    --planner-final agent/outputs/health/valid_planner_final_prompt.jsonl \
-    --executor-input agent/outputs/health/valid_executor_no_intent_sft.jsonl \
-    --output agent/outputs/health/valid_no_intent_merged_sft.jsonl
+    --planner-final agent/outputs/health/health_train_planner_final_prompt.jsonl \
+    --executor-input agent/outputs/health/health_train_executor_no_intent_sft.jsonl \
+    --output agent/outputs/health/health_train_no_intent_merged_sft.jsonl
 """
 
 from __future__ import annotations

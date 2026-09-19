@@ -81,7 +81,25 @@ def safe_path_part(value: str | None, fallback: str) -> str:
 
 
 OUTPUT_DOMAIN_NAME = safe_path_part(os.getenv("AGENT_OUTPUT_DOMAIN") or os.getenv("AGENT_DOMAIN"), "health")
-OUTPUT_FILE_PREFIX = safe_path_part(os.getenv("AGENT_OUTPUT_PREFIX"), "valid")
+
+# 数据集种类：训练数据 / 测试数据。领域包可以在 ``DomainSpec.dataset_splits`` 里
+# 覆盖或扩展，这里只是不带领域包上下文时的兜底。
+DEFAULT_DATASET_SPLIT = "train"
+
+
+def output_prefix_for(domain_name: str | None = None, split: str | None = None) -> str:
+    """产物文件名的共同前缀，形如 ``<领域名>_<数据集>``。
+
+    前缀里带上领域名，是为了让产物离开本项目目录后仍然认得出出处；带上数据集则
+    让同一项目的训练集和测试集互不覆盖。全项目只在这里拼一次，界面、控制台和
+    命令行都走它，免得改一处漏一处。
+    """
+    domain = safe_path_part(domain_name, OUTPUT_DOMAIN_NAME)
+    dataset = safe_path_part(split, DEFAULT_DATASET_SPLIT)
+    return f"{domain}_{dataset}"
+
+
+OUTPUT_FILE_PREFIX = safe_path_part(os.getenv("AGENT_OUTPUT_PREFIX"), output_prefix_for())
 AGENT_DOMAIN_OUTPUTS_DIR = path_from_env("AGENT_DOMAIN_OUTPUTS_DIR", AGENT_OUTPUTS_DIR / OUTPUT_DOMAIN_NAME)
 
 
@@ -97,7 +115,8 @@ def output_file_for_domain(stage: str, domain_name: str | None = None, prefix: s
     """Build a default output path from one domain folder and one shared prefix.
 
     Change ``AGENT_DOMAIN`` / ``AGENT_OUTPUT_DOMAIN`` to switch folders.
-    Change ``AGENT_OUTPUT_PREFIX`` once to rename all stage files for a run.
+    Change ``AGENT_OUTPUT_PREFIX`` once to rename all stage files for a run;
+    otherwise the prefix is ``<domain>_<split>`` from ``output_prefix_for``.
     """
     file_prefix = safe_path_part(prefix, OUTPUT_FILE_PREFIX)
     file_stage = safe_path_part(stage, "data")

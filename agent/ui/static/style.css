@@ -285,6 +285,23 @@ input[type="checkbox"] { accent-color: var(--primary); cursor: pointer; }
 .icon-btn:hover { background: var(--paper-2); border-color: var(--primary); color: var(--primary); }
 .icon-btn .ico { width: 15px; height: 15px; }
 
+/* 数据集快捷按钮（训练数据 / 测试数据……）：点一下就把输出前缀换成该项目对应的值。
+   顶栏本来就窄，放不下时跟着 .env 一起换行。 */
+.split-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.split-pills:empty { display: none; }
+.split-pill {
+  font-size: 11.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--paper);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.split-pill:hover { background: var(--paper-2); border-color: var(--primary); color: var(--primary); }
+.split-pill.active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+
 /* ---------- 模态框 ---------- */
 .modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .modal[hidden] { display: none; }

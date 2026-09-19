@@ -41,6 +41,14 @@ class DomainSpec:
     answer_templates: dict[str, str] = field(default_factory=dict)
     planner_action_space: tuple[str, ...] = ("tool_call", "planning_finish", "ask_clarification")
     eval_config: dict[str, Any] = field(default_factory=dict)
+    # 这个项目产出哪几种数据集：``{split: 界面上的名字}``，顺序即界面顺序。
+    # 产物文件名是 ``<领域名>_<split>_<阶段>.jsonl``（前缀由 config.output_prefix_for
+    # 拼），所以同一台机器上多个项目的数据即使被收集到一起也认得出出处，训练集和
+    # 测试集也不会互相覆盖。需要额外的数据集（例如 ``smoke``）在领域包自己的
+    # spec.py 里覆盖这一项即可。
+    dataset_splits: dict[str, str] = field(
+        default_factory=lambda: {"train": "训练数据", "valid": "测试数据"}
+    )
     executor_user_prompt_builder: ExecutorUserPromptBuilder | None = None
     tool_runner: ToolRunner | None = None
     sample_context_setter: SampleContextSetter | None = None

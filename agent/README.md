@@ -220,17 +220,22 @@ python -m agent.multiturn_cli --domain health_talent --input agent/domains/healt
 agent/outputs/<domain>/<prefix>_<stage>.jsonl
 ```
 
-默认 `domain=health`、`prefix=valid`，因此一套完整健康管理数据会默认写到：
+默认 `domain=health`、`prefix=health_train`，因此一套完整健康管理数据会默认写到：
 
 ```text
-agent/outputs/health/valid_planner_trajectories.jsonl
-agent/outputs/health/valid_planner_step_sft.jsonl
-agent/outputs/health/valid_planner_final_prompt.jsonl
-agent/outputs/health/valid_executor_answer_sft.jsonl
-agent/outputs/health/valid_merged_final_prompt.jsonl
-agent/outputs/health/valid_dedup_final_prompt.jsonl
-agent/outputs/health/valid_duplicates.jsonl
+agent/outputs/health/health_train_planner_trajectories.jsonl
+agent/outputs/health/health_train_planner_step_sft.jsonl
+agent/outputs/health/health_train_planner_final_prompt.jsonl
+agent/outputs/health/health_train_executor_answer_sft.jsonl
+agent/outputs/health/health_train_merged_final_prompt.jsonl
+agent/outputs/health/health_train_dedup_final_prompt.jsonl
+agent/outputs/health/health_train_duplicates.jsonl
 ```
+
+前缀默认由 `<领域名>_<数据集>` 拼成（`config.output_prefix_for`），数据集取自领域包
+的 `dataset_splits`（基类默认 `train` / `valid`）。这样同名产物能一眼看出属于哪个
+项目，训练集与测试集也不会互相覆盖。控制台顶栏的「训练数据 / 测试数据」按钮和
+`--prefix` 走的是同一套规则。
 
 只想换同一批数据的文件名前缀时，改一个环境变量即可：
 
@@ -350,7 +355,7 @@ python -m agent.fix_empty_tool_call_intents --in-place
 输出：
 
 ```text
-agent/outputs/health/valid_planner_trajectories.jsonl
+agent/outputs/health/health_train_planner_trajectories.jsonl
 ```
 
 ## 转 SFT
@@ -385,14 +390,14 @@ python -m agent.merge_final_sft
 默认输入：
 
 ```text
-agent/outputs/health/valid_planner_final_prompt.jsonl
-agent/outputs/health/valid_executor_answer_sft.jsonl
+agent/outputs/health/health_train_planner_final_prompt.jsonl
+agent/outputs/health/health_train_executor_answer_sft.jsonl
 ```
 
 默认输出：
 
 ```text
-agent/outputs/health/valid_merged_final_prompt.jsonl
+agent/outputs/health/health_train_merged_final_prompt.jsonl
 ```
 
 输出格式与 `convert_to_final.py` 完全一致：
@@ -418,9 +423,9 @@ python -m agent.data_stats
 不传路径时会自动统计 `agent/outputs` 下的默认数据文件。也可以指定一个或多个 JSONL：
 
 ```bash
-python -m agent.data_stats agent/outputs/health/valid_planner_trajectories.jsonl
-python -m agent.data_stats agent/outputs/health/*.jsonl --output agent/outputs/health/data_stats.md
-python -m agent.data_stats agent/outputs/health/*.jsonl --format json --output agent/outputs/health/data_stats.json
+python -m agent.data_stats agent/outputs/health/health_train_planner_trajectories.jsonl
+python -m agent.data_stats agent/outputs/health/*.jsonl --output agent/outputs/health/health_train_data_stats.md
+python -m agent.data_stats agent/outputs/health/*.jsonl --format json --output agent/outputs/health/health_train_data_stats.json
 ```
 
 模块会自动识别以下数据类型并采用不同统计方式：
@@ -442,7 +447,7 @@ python -m agent.data_stats --max-rows 1000
 可以使用内置去重模块对合成好的最终训练数据做相似去重，默认输入就是 `merge_final_sft.py` 之后的最终格式：
 
 ```text
-agent/outputs/health/valid_merged_final_prompt.jsonl
+agent/outputs/health/health_train_merged_final_prompt.jsonl
 ```
 
 算法参考根目录 `MinHash.py`，默认使用字符 n-gram 精确 Jaccard，无额外依赖；如果安装了 `datasketch`，也可以切换到 MinHash LSH。
@@ -464,8 +469,8 @@ python -m agent.deduplicate
 默认输出：
 
 ```text
-agent/outputs/health/valid_dedup_final_prompt.jsonl
-agent/outputs/health/valid_duplicates.jsonl
+agent/outputs/health/health_train_dedup_final_prompt.jsonl
+agent/outputs/health/health_train_duplicates.jsonl
 ```
 
 覆盖原最终文件时会自动备份：
@@ -528,7 +533,7 @@ python -m agent.convert_to_sft --no-reasoning
 输出：
 
 ```text
-agent/outputs/health/valid_planner_step_sft.jsonl
+agent/outputs/health/health_train_planner_step_sft.jsonl
 ```
 
 ## 执行阶段最终回答数据合成
@@ -536,7 +541,7 @@ agent/outputs/health/valid_planner_step_sft.jsonl
 执行阶段与规划阶段隔离实现，只读取规划阶段输出作为前置信息，不修改 planner 流程。输入默认来自：
 
 ```text
-agent/outputs/health/valid_planner_trajectories.jsonl
+agent/outputs/health/health_train_planner_trajectories.jsonl
 ```
 
 `executor_generator.py` 会从每条规划轨迹中提取：
@@ -585,7 +590,7 @@ python -m agent.executor_generator --exclude-tool-errors
 输出：
 
 ```text
-agent/outputs/health/valid_executor_answer_sft.jsonl
+agent/outputs/health/health_train_executor_answer_sft.jsonl
 ```
 
 每条数据包含：
