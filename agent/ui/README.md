@@ -14,6 +14,9 @@ python -m agent.ui
 # → http://127.0.0.1:8770
 ```
 
+用 `./install.sh` 装过之后，`.venv/bin/agent-pipeline` 是同一个入口，激活虚拟环境后
+可以直接敲 `agent-pipeline`。
+
 可用参数：
 
 | 参数 | 默认值 | 说明 |
@@ -44,8 +47,12 @@ python -m agent.ui
 
 - **API** — `DEEPSEEK_API_KEY` 是否已从 `agent/.env` 读到。合成类阶段（planner
   轨迹、executor 回答、多轮会话、身份样本等）依赖它。
-- **Tokenizer** — 本地 tokenizer 路径（`MODELS/Qwen3.5-0.8B-Base`）是否存在。
+- **Tokenizer** — 本地 tokenizer 路径（默认 `MODELS/Qwen3.5-0.8B-Base`）是否存在。
   prompt 渲染类阶段（planner final prompt）依赖它。
+
+> `MODELS/` 不随仓库发布：tokenizer 得自己准备。要么把本地模型放到仓库根的
+> `MODELS/<名字>/`，要么在顶栏齿轮里把路径改指到你已有的 tokenizer。没配也不会拦
+> 住整个流程——只有第 4、6 阶段需要它，其余阶段照常跑，这两个阶段会标红提示。
 
 **输出前缀**决定产物文件名，默认 `valid`，也就是 `valid_planner_trajectories.jsonl`
 这样的命名。想跑 smoke 试验就把前缀改成 `smoke`，两套产物互不覆盖。

@@ -68,7 +68,32 @@ agent/
 └── ui/                      本地 Web 控制台
 ```
 
+仓库根的 `install.sh` 是一键安装脚本，`pyproject.toml` 声明包元数据与依赖
+（版本号取自 `agent/ui/__init__.py`，依赖取自 `requirements.txt`，都不重复写第二遍）。
+
 ## 快速开始
+
+### 一键安装（推荐）
+
+```bash
+git clone https://github.com/Creeperw/agent-data-pipeline.git
+cd agent-data-pipeline
+./install.sh
+```
+
+脚本会检查 Python 版本（需 3.10+）、在仓库里建 `.venv`、安装依赖，并复制出一份
+`agent/.env`。已经存在的 `agent/.env` 不会被覆盖，里面的密钥保留原样。
+
+装好后启动控制台：
+
+```bash
+.venv/bin/python -m agent.ui
+# → http://127.0.0.1:8770
+```
+
+`source .venv/bin/activate` 之后也可以直接敲 `agent-pipeline`，效果相同。
+
+### 手动安装
 
 ```bash
 # 1. 安装依赖
@@ -82,6 +107,26 @@ cp agent/.env.example agent/.env
 python -m agent.ui
 # → http://127.0.0.1:8770
 ```
+
+### 为什么要留在仓库里运行
+
+`pip install agent-data-pipeline` 那种装进 `site-packages` 的用法**不适用**于本项目。
+控制台、seed 编辑器和新工具都要往包目录里写文件：
+
+| 运行时写入 | 用途 |
+| --- | --- |
+| `agent/.env` | 顶栏齿轮里改配置 |
+| `agent/tools/*.py` | 在界面上新建或编辑工具 |
+| `agent/domains/<领域>/seeds.jsonl` | 在线编辑 seed |
+| `agent/data/`、`agent/outputs/` | 中间产物与合成结果 |
+
+包目录本身就是工作目录，必须可读可写、且看得见。装进 `site-packages` 会让这些文件
+散落到库目录里，升级或重装时被覆盖，在只读环境下还会直接报权限错。所以请用
+`pip install -e .`（可编辑安装，包仍指回仓库），或者干脆不用 pip，直接
+`pip install -r requirements.txt` 后从仓库根目录运行。
+
+真装错了也不会静默出问题：控制台启动时会检测到并打印上面这些说明。确实知道后果的话，
+可以设 `AGENT_ALLOW_SITE_PACKAGES=1` 跳过检查。
 
 控制台只监听 `127.0.0.1`，默认不对外暴露。如需在另一台机器的浏览器访问，见
 [`agent/ui/README.md`](agent/ui/README.md) 的「在 Windows 侧浏览器访问」一节。

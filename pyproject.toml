@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-data-pipeline"
+description = "合成主模型第一阶段 SFT 训练数据的工具集，附本地 Web 控制台"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["sft", "distillation", "data-pipeline", "tool-calling"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# 版本号与依赖都不在这里重复写一遍：版本取自 agent/ui/__init__.py，依赖取自
+# requirements.txt。两处各自都是唯一的真相来源，少一个会写歪的地方。
+dynamic = ["version", "dependencies"]
+
+[project.scripts]
+# 装好后可直接敲 `agent-pipeline`，等价于 `python -m agent.ui`。
+agent-pipeline = "agent.ui.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/Creeperw/agent-data-pipeline"
+Issues = "https://github.com/Creeperw/agent-data-pipeline/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "agent.ui.__version__" }
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+# 只收流水线本体。工作区顶层可能另有与流水线无关的目录，不在这里声明就收不进来。
+include = ["agent*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+# 控制台前端与领域种子都是运行时真的会读的文件，必须打进包里。只列这一个
+# 真正的数据目录，不用 `*` 通配 —— `agent/.env` 就在同一个目录下，通配会把它
+# 连同真实密钥一起打进发行包。
+#
+# 注意：agent/domains/health/ 下没有 seeds.jsonl（该领域的种子仅供内部使用，
+# 未随包发布），所以 `*/seeds.jsonl` 命中不到它，这是预期行为。
+"agent" = ["README.md", ".env.example"]
+"agent.domains" = ["README.md", "*/seeds.jsonl", "*/tools.json"]
+"agent.ui" = ["README.md", "static/*"]
