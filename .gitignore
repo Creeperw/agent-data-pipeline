@@ -16,6 +16,9 @@
 !/agent/
 !/packaging/
 !/.github/
+/.github/*
+!/.github/workflows/
+!/.github/workflows/**
 
 # =============================================================================
 # agent/ 内部
