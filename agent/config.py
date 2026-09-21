@@ -9,18 +9,117 @@
 from __future__ import annotations
 
 import os
+import shutil
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+IS_FROZEN = bool(getattr(sys, "frozen", False))
+PACKAGE_ROOT = Path(__file__).resolve().parent
+RESOURCE_PROJECT_ROOT = PACKAGE_ROOT.parent
+if IS_FROZEN:
+    RESOURCE_PROJECT_ROOT = Path(
+        os.getenv("AGENT_RESOURCE_ROOT") or getattr(sys, "_MEIPASS", PACKAGE_ROOT.parent)
+    )
+    RESOURCE_PACKAGE_ROOT = RESOURCE_PROJECT_ROOT / "agent"
+else:
+    RESOURCE_PACKAGE_ROOT = PACKAGE_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-AGENT_ROOT = Path(__file__).resolve().parent
+
+def _default_user_data_root() -> Path:
+    """Return the writable per-user data directory used by packaged builds."""
+
+    configured = (os.getenv("AGENT_USER_DATA_DIR") or "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    if os.name == "nt":
+        return Path(os.getenv("APPDATA") or Path.home()) / "AgentDataPipeline"
+    return Path(os.getenv("XDG_DATA_HOME") or (Path.home() / ".local" / "share")) / "AgentDataPipeline"
+
+
+USER_DATA_ROOT = _default_user_data_root()
+
+# In source mode the repository remains both the code and data root. In a
+# frozen build bundled files are read-only, so all editable assets move to the
+# per-user directory while the bundled package stays under _MEIPASS.
+PROJECT_ROOT = USER_DATA_ROOT if IS_FROZEN else RESOURCE_PROJECT_ROOT
+AGENT_ROOT = USER_DATA_ROOT if IS_FROZEN else PACKAGE_ROOT
+RESOURCE_AGENT_ROOT = RESOURCE_PACKAGE_ROOT
+
+# Load the writable user's configuration first. ``override=False`` preserves
+# values explicitly supplied by the process environment.
+load_dotenv(AGENT_ROOT / ".env")
+load_dotenv()
 AGENT_DATA_DIR = AGENT_ROOT / "data"
 AGENT_OUTPUTS_DIR = AGENT_ROOT / "outputs"
 MODELS_DIR = PROJECT_ROOT / "MODELS"
 SAVES_DIR = PROJECT_ROOT / "saves"
+
+
+def initialize_user_data() -> None:
+    """Create the writable data tree for a frozen distribution.
+
+    Existing user files are never overwritten. This makes upgrading the
+    executable safe: roles, tools, seeds, credentials and generated outputs
+    survive replacement of the program directory.
+    """
+
+    if not IS_FROZEN:
+        return
+
+    AGENT_ROOT.mkdir(parents=True, exist_ok=True)
+    for directory in (AGENT_DATA_DIR, AGENT_OUTPUTS_DIR, AGENT_ROOT / "domains", AGENT_ROOT / "tools"):
+        directory.mkdir(parents=True, exist_ok=True)
+
+    resource_domains = RESOURCE_AGENT_ROOT / "domains"
+    target_domains = AGENT_ROOT / "domains"
+    if resource_domains.is_dir():
+        for source in resource_domains.rglob("*"):
+            relative = source.relative_to(resource_domains)
+            if any(part in {"__pycache__", ".history"} for part in relative.parts):
+                continue
+            if source.suffix in {".pyc", ".pyo"}:
+                continue
+            target = target_domains / relative
+            if source.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+            elif source.is_file() and not target.exists():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+
+    resource_tools = RESOURCE_AGENT_ROOT / "tools"
+    target_tools = AGENT_ROOT / "tools"
+    if resource_tools.is_dir():
+        for source in resource_tools.glob("*.py"):
+            target = target_tools / source.name
+            if not target.exists():
+                shutil.copy2(source, target)
+
+    example = RESOURCE_AGENT_ROOT / ".env.example"
+    env_file = AGENT_ROOT / ".env"
+    if example.is_file() and not env_file.exists():
+        shutil.copy2(example, env_file)
+
+
+initialize_user_data()
+if IS_FROZEN:
+    load_dotenv(AGENT_ROOT / ".env", override=False)
+
+if IS_FROZEN:
+    # Add the writable domain package root to the regular package search path.
+    # This lets a user-created ``domains/<name>/spec.py`` override the bundled
+    # template without copying the whole executable.
+    if str(AGENT_ROOT) not in sys.path:
+        sys.path.insert(0, str(AGENT_ROOT))
+    try:
+        import agent.domains as _domains_package
+
+        user_domains = str(AGENT_ROOT / "domains")
+        if user_domains not in _domains_package.__path__:
+            _domains_package.__path__.insert(0, user_domains)
+    except Exception:  # pragma: no cover - defensive startup fallback
+        pass
 
 def require_env(key: str, label: str) -> str:
     """取一个必须由使用者显式配置的值；缺了就直接报错。
@@ -68,7 +167,7 @@ def multi_turn_compression_model_name() -> str:
 
 
 def path_from_env(env_name: str, default: Path) -> Path:
-    """Read a path from env; relative env values are resolved from project root."""
+    """Read a path from env; relative values follow the active data root."""
     value = os.getenv(env_name)
     if not value:
         return default

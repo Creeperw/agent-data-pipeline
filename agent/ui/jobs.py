@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 import signal
 import threading
 import time
@@ -397,10 +398,23 @@ class JobManager:
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         env.setdefault("PYTHONIOENCODING", "utf-8")
+        if getattr(sys, "frozen", False):
+            # A frozen launcher is the executable, not a Python interpreter;
+            # child stages are launched through the same executable and use
+            # the module dispatch handled by the packaged entrypoint.
+            env.setdefault("AGENT_USER_DATA_DIR", str(self.project_root))
+
+        command = run.command
+        if getattr(sys, "frozen", False) and len(command) >= 3 and command[1] == "-m":
+            worker = Path(sys.executable).with_name(
+                "AgentDataPipelineWorker" + (".exe" if os.name == "nt" else "")
+            )
+            executable = str(worker if worker.is_file() else Path(sys.executable))
+            command = [executable, "--stage-module", command[2], *command[3:]]
 
         try:
             process = await asyncio.create_subprocess_exec(
-                *run.command,
+                *command,
                 cwd=str(self.project_root),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,

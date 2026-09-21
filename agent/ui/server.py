@@ -140,6 +140,8 @@ except ImportError:  # pragma: no cover - 兼容 ``python agent/ui/server.py``
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+if getattr(sys, "frozen", False):
+    STATIC_DIR = Path(getattr(sys, "_MEIPASS", STATIC_DIR)) / "agent" / "ui" / "static"
 PREVIEW_MAX_CHARS = 40_000
 PREVIEW_MAX_ROWS = 200
 SEED_EDIT_MAX_ROWS = 3000
@@ -473,6 +475,12 @@ def create_app() -> FastAPI:
 
     # -- 元信息 -------------------------------------------------------------
 
+    @app.get("/api/health")
+    def api_health() -> dict[str, Any]:
+        """轻量启动探针，不触发模型、网络或领域重依赖加载。"""
+
+        return {"status": "ok", "version": __version__}
+
     @app.get("/api/meta")
     def api_meta() -> dict[str, Any]:
         domains = find_domains()
@@ -485,6 +493,7 @@ def create_app() -> FastAPI:
             "python": sys.executable,
             "projectRoot": str(PROJECT_ROOT),
             "agentRoot": str(AGENT_ROOT),
+            "resourceRoot": str(getattr(sys, "_MEIPASS", PROJECT_ROOT)),
             "modelPath": str(tokenizer_path),
             "modelPathExists": tokenizer_path.exists(),
             # 与徽章、运行前拦截同一份判断：只看环境变量非空的话，模板里的

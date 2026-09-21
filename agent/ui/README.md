@@ -8,6 +8,21 @@
 
 ## 启动
 
+### Windows 可运行程序（v1.3.0）
+
+Release 提供 `AgentDataPipeline-windows-x64-v1.3.0.zip`。解压后双击
+`AgentDataPipeline.exe`，程序会自动选择本地端口、启动控制台并打开浏览器；不需要
+安装 Python、pip 或虚拟环境。
+
+程序文件是只读的，配置、领域、角色、工具、种子和产物写入：
+
+```text
+%APPDATA%\AgentDataPipeline\
+```
+
+升级新版时替换程序目录即可，不会覆盖用户数据。当前第一版是免安装 `onedir` 压缩
+包，后续再提供桌面安装器。
+
 ```bash
 # 在仓库根目录（即 agent/ 的上一级）执行
 python -m agent.ui

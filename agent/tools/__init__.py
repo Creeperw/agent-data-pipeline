@@ -41,8 +41,13 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-TOOLS_DIR = Path(__file__).resolve().parent
-DOMAINS_DIR = TOOLS_DIR.parent / "domains"
+try:
+    from agent.config import AGENT_ROOT
+except Exception:  # pragma: no cover - direct static loading fallback
+    AGENT_ROOT = Path(__file__).resolve().parent.parent
+
+TOOLS_DIR = AGENT_ROOT / "tools"
+DOMAINS_DIR = AGENT_ROOT / "domains"
 
 # 工具凭据统一放在 agent/.env。这里显式加载一次，让「工具试运行」「单独 import 工具」
 # 这类不走 agent.config 的调用路径也读得到 key，否则 os.getenv 会静默拿到空值，表现
@@ -50,7 +55,7 @@ DOMAINS_DIR = TOOLS_DIR.parent / "domains"
 #
 # 路径写死不走 find_dotenv()：后者靠调用栈推断起点，在 python -c / 交互式环境下会找
 # 不到文件。override 保持默认的 False，流水线里已导出的环境变量仍然优先。
-load_dotenv(TOOLS_DIR.parent / ".env")
+load_dotenv(AGENT_ROOT / ".env")
 
 # Each domain stores the subset of the library it opens up in this file.
 ENABLED_FILENAME = "tools.json"

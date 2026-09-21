@@ -9,9 +9,13 @@
 !/README.md
 !/LICENSE
 !/requirements.txt
+!/requirements-build.txt
 !/pyproject.toml
 !/install.sh
+!/launcher.py
 !/agent/
+!/packaging/
+!/.github/
 
 # =============================================================================
 # agent/ 内部
@@ -41,6 +45,9 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+.build-venv/
+build/
+dist/
 
 # 编辑器与系统
 .history/
