@@ -1,0 +1,52 @@
+# =============================================================================
+# 本仓库只发布 agent/ 流水线
+# =============================================================================
+# 工作区顶层另有 CUDA/、competition/、tiaozhanbei/、zother/、MODELS/、test_img/
+# 等约 7.6 GB 与流水线无关的内容。下面用白名单一次性挡住，比逐条排除更不容易漏；
+# 将来要发布别的顶层目录，在这里补一条 `!<目录>/` 即可。
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/requirements.txt
+!/pyproject.toml
+!/install.sh
+!/agent/
+
+# =============================================================================
+# agent/ 内部
+# =============================================================================
+
+# 凭据。内含真实 API key，一旦提交即进入 git 历史，删文件也撤不回来。
+# 下面的 ! 例外让 .env.example 可以入库，供使用者对照填写。
+#
+# `.env.*` 这条通配是必须的：改 key 前顺手 `cp .env .env.bak-<日期>` 是很自然的
+# 做法，而 `.bak` 只挡得住以 .bak 结尾的名字，挡不住 `.env.bak-before-exa` 这种。
+# 漏一个备份文件出去，等于把里面所有 key 一起提交。
+agent/.env
+agent/.env.*
+!agent/.env.example
+
+# 数据与产物。合计约 2.4 GB，且 data_stats 报告里会记录本机绝对路径。
+agent/data/
+agent/outputs/
+
+# 个人笔记与内部数据快照，不属于项目文档。要发布就删掉下面两行。
+agent/z_write_le.md
+agent/z_data_static.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 编辑器与系统
+.history/
+.idea/
+.DS_Store
+Thumbs.db
+*.bak
+*.orig
+*.swp

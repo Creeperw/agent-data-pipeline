@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 数据流水线控制台</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <span class="logo">◈</span>
+    <div class="brand-text">
+      <strong>数据流水线</strong>
+      <span class="version" id="version"></span>
+    </div>
+    <button class="collapse-btn" id="btn-collapse" type="button" title="折叠侧边栏" aria-label="折叠侧边栏" aria-expanded="true">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+    </button>
+  </div>
+
+  <nav class="nav" id="tabs">
+    <div class="nav-group">
+      <span class="nav-group-label">流水线</span>
+      <button class="tab active" data-view="run" title="运行">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+        <span>运行</span>
+      </button>
+      <button class="tab" data-view="artifacts" title="产物">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>产物</span>
+      </button>
+    </div>
+    <div class="nav-group">
+      <span class="nav-group-label">数据</span>
+      <button class="tab" data-view="seeds" title="seed 数据">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        <span>seed 数据</span>
+      </button>
+      <button class="tab" data-view="tools" title="工具">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span>工具</span>
+      </button>
+      <button class="tab" data-view="roles" title="角色">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/><path d="M19 8h3M20.5 6.5v3"/></svg>
+        <span>角色</span>
+      </button>
+    </div>
+    <div class="nav-group">
+      <span class="nav-group-label">分析</span>
+      <button class="tab" data-view="stats" title="统计">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>统计</span>
+      </button>
+      <button class="tab" data-view="report" title="报告">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>报告</span>
+      </button>
+    </div>
+    <div class="nav-group">
+      <span class="nav-group-label">管理</span>
+      <button class="tab" data-view="jobs" title="历史">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>历史</span>
+      </button>
+      <button class="tab" data-view="domain" title="领域包">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <span>领域包</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="sidebar-foot">
+    <span class="dot-live"></span>
+    <span>本地控制台</span>
+  </div>
+</aside>
+
+<div class="main-col">
+  <header class="topbar">
+    <!-- 左：当前项目上下文。领域 + 构建任务是「我在操作什么」，两者相邻才读得通。
+         构建任务只有输入框一个入口：数据集档位（训练数据 / 测试数据……）就是任务名
+         本身，列进输入框的候选列表即可，不必再单挂一排快捷按钮——那样同一个值会同时
+         出现在按钮、输入框和候选列表三处，同一份状态三条入口。 -->
+    <div class="topbar-main">
+      <div class="project-pick">
+        <label class="field inline">
+          <span class="field-label">领域</span>
+          <select id="domain"></select>
+        </label>
+        <button class="icon-btn" id="btn-domains" type="button" title="管理领域（项目）" aria-label="管理领域">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+        </button>
+      </div>
+
+      <span class="topbar-sep" aria-hidden="true"></span>
+
+      <div class="project-meta">
+        <label class="field inline">
+          <span class="field-label">构建任务</span>
+          <span class="task-picker" id="task-picker">
+            <input id="prefix" type="text" value="" size="18" spellcheck="false"
+                 placeholder="项目名_数据集"
+                 title="这次构建写到哪个任务目录：产物落在 outputs/项目/任务/ 下。点输入框会列出本项目声明的数据集档位和已有任务；留空 = 当前项目的默认档位">
+            <button id="btn-task-options" class="task-picker-toggle" type="button"
+                    aria-label="打开构建任务列表" aria-haspopup="listbox" aria-expanded="false">⌄</button>
+            <div id="task-options" class="task-options" role="listbox" hidden></div>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 右：状态与动作。刷新/配置操作的是整个控制台，徽章是环境体检结果，
+         都与「当前项目」无关，所以归到一组靠右站。 -->
+    <div class="topbar-side">
+      <div class="status-pills">
+        <span class="badge" id="badge-api" title="DEEPSEEK_API_KEY 是否已配置">API</span>
+        <span class="badge" id="badge-model" title="本地 tokenizer 路径是否存在">Tokenizer</span>
+      </div>
+      <span class="topbar-sep" aria-hidden="true"></span>
+      <div class="topbar-actions">
+        <button class="ghost" id="btn-restart" type="button" title="重启控制台（改完 agent/core/** 后需要）">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span>重启</span>
+        </button>
+        <button id="btn-refresh" class="ghost" title="重新读取磁盘状态">刷新</button>
+        <button class="icon-btn" id="btn-config" type="button" title="运行时配置（教师模型接入 / 超时）" aria-label="运行时配置">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+  <!-- ============ 运行 ============ -->
+  <section class="view active" id="view-run">
+    <!-- 运行控制条：整页的主线是「现在是什么状态、下一步点哪」。
+         原来这些挤在左栏底部，窗口一矮就被压出视野，运行时也看不出整批跑到哪。 -->
+    <div class="panel run-bar">
+      <div class="run-bar-state">
+        <span class="run-dot" id="run-dot"></span>
+        <div class="run-bar-text">
+          <strong id="run-status">未开始</strong>
+          <span class="hint" id="selection-hint"></span>
+        </div>
+      </div>
+      <div class="run-bar-track" id="run-track">
+        <div class="run-bar-fill" id="run-fill"></div>
+      </div>
+      <div class="btn-row">
+        <button id="btn-run" class="primary">开始运行</button>
+        <button id="btn-cancel" class="danger" disabled>取消</button>
+      </div>
+    </div>
+
+    <div class="run-layout">
+      <aside class="panel stage-panel">
+        <div class="panel-head">
+          <span>阶段</span>
+          <div class="btn-row">
+            <span class="segmented" role="group" aria-label="批量选择阶段">
+              <button class="ghost small" data-select="main">主链路</button>
+              <button class="ghost small" data-select="all">全选</button>
+              <button class="ghost small" data-select="none">清空</button>
+            </span>
+            <button class="ghost small" id="btn-expand-all" title="展开/收起所有阶段的参数">展开参数</button>
+          </div>
+        </div>
+        <div class="panel-body" id="stage-list">
+          <div class="loading" aria-busy="true" aria-label="加载中">
+            <span class="skeleton skeleton-title"></span>
+            <div class="skeleton-lines"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="run-main">
+        <div class="panel">
+          <div class="panel-head">
+            <span id="log-title">执行</span>
+            <div class="btn-row">
+              <label class="field inline small"><input type="checkbox" id="autoscroll" checked><span>自动滚动</span></label>
+              <button class="ghost small" id="btn-clear-log">清空</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="log-wrap">
+              <pre class="log" id="log"></pre>
+              <div class="log-empty" id="log-empty">
+                <svg class="ico" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3"/><path d="M13 15h4"/></svg>
+                <p class="log-empty-title">还没有运行输出</p>
+                <p class="log-empty-desc">在上面勾选阶段、点<b>开始运行</b>之后，每个阶段子进程的命令行和实时日志会按时间顺序显示在这里。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 产物 ============ -->
+  <section class="view" id="view-artifacts">
+    <div class="runs-layout">
+      <aside class="panel runs-panel">
+        <div class="panel-head">
+          <span>运行批次</span>
+          <div class="btn-row">
+            <button class="ghost small" id="btn-runs-refresh">刷新</button>
+          </div>
+        </div>
+        <div class="panel-body" id="run-list">
+          <div class="loading" aria-busy="true" aria-label="加载中">
+            <span class="skeleton skeleton-title"></span>
+            <div class="skeleton-lines"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="panel artifacts-panel">
+        <div class="panel-head">
+          <span id="artifacts-title">产物文件</span>
+          <div class="btn-row">
+            <span class="hint" id="artifact-dir"></span>
+          </div>
+        </div>
+        <!-- 任务条：产物按任务分目录存放，这里切任务、看每个任务有多少文件；
+             还没搬进任务目录的老文件给一个一键归位入口。 -->
+        <div class="task-bar" id="task-bar" hidden>
+          <span class="task-bar-label">构建任务</span>
+          <div class="task-pills" id="task-pills"></div>
+          <button class="ghost small" id="btn-migrate-tasks" type="button" hidden>旧产物归位</button>
+        </div>
+        <div class="panel-body table-wrap">
+          <table class="grid" id="artifact-table">
+            <thead>
+              <tr><th>产物</th><th>状态</th><th class="num">大小</th><th class="num">行数</th><th>修改时间</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="6">
+                <div class="loading" aria-busy="true" aria-label="加载中">
+                  <span class="skeleton skeleton-title"></span>
+                  <div class="skeleton-lines"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div>
+                </div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ seed ============ -->
+  <section class="view" id="view-seeds">
+    <div class="panel">
+      <div class="panel-head">
+        <span>seed 数据</span>
+        <div class="btn-row">
+          <span class="hint" id="seed-path"></span>
+          <button class="ghost small" id="btn-seed-toggle" hidden>全部收起</button>
+          <button class="ghost small" id="btn-seed-add">新增一条</button>
+          <button class="primary small" id="btn-seed-save">保存</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <p class="hint" id="seed-hint"></p>
+        <div id="seed-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 工具 ============ -->
+  <section class="view" id="view-tools">
+    <div class="panel">
+      <div class="panel-head">
+        <span>工具凭据</span>
+        <div class="btn-row">
+          <span class="hint" id="env-msg"></span>
+          <span class="hint mono" id="env-path"></span>
+          <button class="ghost small" id="btn-env-refresh">刷新</button>
+          <button class="primary small" id="btn-env-save">保存</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <p class="hint" id="env-summary">加载中…</p>
+        <div class="env-list" id="env-list"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span>全局工具库</span>
+        <div class="btn-row">
+          <span class="hint" id="tools-target"></span>
+          <button class="primary small" id="btn-tool-new" type="button">新建工具</button>
+          <button class="ghost small" id="btn-tool-refresh">刷新</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <p class="hint" id="tools-summary">加载中…</p>
+        <div class="tool-list" id="tool-list"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span>本项目独有工具</span>
+        <div class="btn-row">
+          <span class="hint" id="own-tools-target"></span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <p class="hint" id="own-tools-summary">加载中…</p>
+        <div class="tool-list" id="own-tool-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 角色 ============ -->
+  <section class="view" id="view-roles">
+    <div class="panel">
+      <div class="panel-head">
+        <span>角色管理</span>
+        <div class="btn-row">
+          <span class="hint" id="roles-target"></span>
+          <button class="primary small" id="btn-role-new" type="button">新建角色</button>
+          <button class="ghost small" id="btn-role-refresh" type="button">刷新</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <p class="hint" id="roles-summary">加载中…</p>
+        <div class="role-list" id="role-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 统计 ============ -->
+  <section class="view" id="view-stats">
+    <div class="panel">
+      <div class="panel-head">
+        <span>数据统计</span>
+        <div class="btn-row">
+          <span class="hint" id="stats-hint"></span>
+          <button class="ghost small" id="btn-stats-expand" hidden>全部展开</button>
+          <button class="ghost small" id="btn-stats-run">重新生成统计</button>
+        </div>
+      </div>
+      <div class="panel-body" id="stats-body">
+        <div class="empty">
+          <span class="empty-ico"><svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+          <p class="empty-title">还没有生成统计报告</p>
+          <p class="empty-desc">点<b>重新生成统计</b>会跑阶段 10（数据统计报告），只统计当前已经存在的文件。</p>
+          <div class="empty-actions"><button class="ghost small" data-click-target="btn-stats-run">重新生成统计</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 报告 ============ -->
+  <section class="view" id="view-report">
+    <div class="panel">
+      <div class="panel-head">
+        <span>数据统计报告</span>
+        <div class="btn-row">
+          <span class="hint" id="report-path"></span>
+          <button class="ghost small" id="btn-report-expand" hidden>全部展开</button>
+          <button class="ghost small" id="btn-report-copy" hidden>复制 markdown</button>
+          <button class="ghost small" id="btn-report-export" hidden>导出 markdown</button>
+          <button class="ghost small" id="btn-report-run">重新生成报告</button>
+        </div>
+      </div>
+      <div class="panel-body markdown" id="report-body">
+        <div class="empty">
+          <span class="empty-ico"><svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+          <p class="empty-title">该领域还没有统计报告</p>
+          <p class="empty-desc">到<b>运行</b>页跑一次阶段 10（数据统计报告），生成的 markdown 会显示在这里。</p>
+          <div class="empty-actions"><button class="ghost small" data-click-target="btn-report-run">生成报告</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 历史 ============ -->
+  <section class="view" id="view-jobs">
+    <div class="panel">
+      <div class="panel-head"><span>运行历史</span></div>
+      <div class="panel-body table-wrap">
+        <table class="grid" id="job-table">
+          <thead>
+            <tr><th>作业</th><th>状态</th><th>阶段</th><th>开始</th><th>耗时</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="6">
+              <div class="loading" aria-busy="true" aria-label="加载中">
+                <span class="skeleton skeleton-title"></span>
+                <div class="skeleton-lines"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div>
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 领域包 ============ -->
+  <section class="view" id="view-domain">
+    <div class="panel">
+      <div class="panel-head">
+        <span>当前领域包</span>
+        <div class="btn-row">
+          <button class="ghost small" id="btn-domain-pack-refresh">刷新</button>
+        </div>
+      </div>
+      <div class="panel-body" id="domain-pack-body">
+        <div class="loading" aria-busy="true" aria-label="加载中">
+          <span class="skeleton skeleton-title"></span>
+          <div class="skeleton-lines"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  </main>
+</div>
+
+<div class="modal" id="tool-modal" hidden>
+  <div class="modal-backdrop" data-tool-close></div>
+  <div class="modal-card role-card" role="dialog" aria-modal="true" aria-labelledby="tool-modal-title">
+    <div class="modal-head">
+      <span id="tool-modal-title">新建工具</span>
+      <button class="ghost small" id="btn-tool-close" type="button">关闭</button>
+    </div>
+    <form class="modal-body role-form" id="tool-form">
+      <div class="param-grid">
+        <div class="param">
+          <label for="tool-form-name">工具名</label>
+          <input id="tool-form-name" type="text" spellcheck="false" placeholder="search_course_catalog" autocomplete="off">
+          <span class="help">小写字母 / 数字 / 下划线，字母开头</span>
+        </div>
+        <div class="param">
+          <label for="tool-form-description">工具描述</label>
+          <input id="tool-form-description" type="text" placeholder="说明什么时候应该调用它">
+        </div>
+      </div>
+      <div class="param">
+        <label for="tool-form-params">参数（JSON 数组）</label>
+        <textarea id="tool-form-params" rows="5">[]</textarea>
+        <span class="help">示例：[ {"name":"query","type":"string","description":"检索词","required":true} ]</span>
+      </div>
+      <div class="param">
+        <label for="tool-form-mock">模拟返回</label>
+        <textarea id="tool-form-mock" rows="4" placeholder="没有 run() 时返回的文本，可使用 {参数名} 占位"></textarea>
+      </div>
+      <p class="hint">创建后会生成可编辑的 Python 骨架；保存前仍会校验语法和 SPEC，不会直接执行表单内容。</p>
+      <div class="btn-row"><button class="primary small" type="submit" id="btn-tool-submit">创建工具</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="role-modal" hidden>
+  <div class="modal-backdrop" data-role-close></div>
+  <div class="modal-card role-card" role="dialog" aria-modal="true" aria-labelledby="role-modal-title">
+    <div class="modal-head">
+      <span id="role-modal-title">新建角色</span>
+      <button class="ghost small" id="btn-role-close" type="button">关闭</button>
+    </div>
+    <form class="modal-body role-form" id="role-form">
+      <div class="param-grid">
+        <div class="param">
+          <label for="role-form-name">角色名</label>
+          <input id="role-form-name" type="text" spellcheck="false" placeholder="course_reviewer" autocomplete="off">
+          <span class="help">小写字母 / 数字 / 下划线，字母开头</span>
+        </div>
+        <div class="param">
+          <label for="role-form-display">显示名</label>
+          <input id="role-form-display" type="text" placeholder="课程质量审核员" autocomplete="off">
+        </div>
+        <div class="param">
+          <label for="role-form-type">角色类型</label>
+          <select id="role-form-type"><option value="planner">规划助手</option><option value="executor">执行助手</option><option value="reviewer">审核助手</option><option value="custom">自定义</option></select>
+        </div>
+      </div>
+      <div class="param">
+        <label for="role-form-description">用途说明</label>
+        <input id="role-form-description" type="text" placeholder="这个角色负责什么工作？">
+      </div>
+      <div class="param">
+        <label for="role-form-prompt">System prompt</label>
+        <textarea id="role-form-prompt" rows="8" placeholder="填写角色的系统提示词…"></textarea>
+      </div>
+      <div class="param-grid">
+        <div class="param"><label for="role-form-input">输入协议（JSON）</label><textarea id="role-form-input" rows="4">{"user_query":"用户问题"}</textarea></div>
+        <div class="param"><label for="role-form-output">输出协议（JSON）</label><textarea id="role-form-output" rows="4">{"answer":"角色输出"}</textarea></div>
+      </div>
+      <p class="hint" id="role-form-note">角色会先保存为结构化模板，不会直接执行前端提交的 Python 代码。</p>
+      <div class="btn-row"><button class="primary small" type="submit" id="btn-role-submit">创建角色</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<!-- ============ 领域（项目）管理 ============ -->
+<div class="modal" id="domain-modal" hidden>
+  <div class="modal-backdrop" data-domain-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="domain-modal-title">
+    <div class="modal-head">
+      <span id="domain-modal-title">领域（项目）</span>
+      <div class="btn-row">
+        <button class="primary small" id="btn-domain-new" type="button">新建领域</button>
+        <button class="ghost small" id="btn-domain-close" type="button">关闭</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <p class="hint" id="domain-root-hint"></p>
+      <div class="domain-list" id="domain-list">
+        <div class="loading" aria-busy="true" aria-label="加载中">
+          <span class="skeleton skeleton-title"></span>
+          <div class="skeleton-lines"><i class="skeleton"></i><i class="skeleton"></i></div>
+        </div>
+      </div>
+
+      <form class="domain-form" id="domain-form" hidden>
+        <div class="domain-form-head">
+          <span id="domain-form-title">新建领域</span>
+          <button class="ghost small" type="button" id="btn-domain-cancel">取消</button>
+        </div>
+        <div class="param-grid">
+          <div class="param">
+            <label for="domain-form-name">目录名</label>
+            <input id="domain-form-name" type="text" spellcheck="false" placeholder="health_talent" autocomplete="off">
+            <span class="help">小写字母 / 数字 / 下划线，以字母开头</span>
+          </div>
+          <div class="param">
+            <label for="domain-form-display">显示名</label>
+            <input id="domain-form-display" type="text" spellcheck="false" placeholder="健康管理个性化人才培养助手" autocomplete="off">
+            <span class="help">写入 spec.py 的 display_name</span>
+          </div>
+          <div class="param" id="domain-form-template-wrap">
+            <label for="domain-form-template">模板领域</label>
+            <select id="domain-form-template"></select>
+            <span class="help">复制该领域的 spec.py / prompts / tools</span>
+          </div>
+        </div>
+        <div class="domain-form-checks">
+          <label class="field inline small"><input type="checkbox" id="domain-form-seeds"><span id="domain-form-seeds-label">连同 seed 数据一起复制</span></label>
+          <label class="field inline small" id="domain-form-outputs-wrap"><input type="checkbox" id="domain-form-outputs"><span>连同产物一起复制</span></label>
+        </div>
+        <p class="hint" id="domain-form-note"></p>
+        <div class="btn-row">
+          <button class="primary small" type="submit" id="btn-domain-submit">创建</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 领域文件在线编辑 ============ -->
+<div class="modal" id="file-modal" hidden>
+  <div class="modal-backdrop" data-file-close></div>
+  <div class="modal-card editor-card" role="dialog" aria-modal="true" aria-labelledby="file-modal-title">
+    <div class="modal-head">
+      <div class="editor-head-main">
+        <span id="file-modal-title">编辑领域文件</span>
+        <span class="hint" id="file-dirty"></span>
+        <span class="editor-badges" id="editor-badges"></span>
+      </div>
+      <div class="btn-row">
+        <button class="ghost small" id="btn-file-history" type="button">历史版本</button>
+        <button class="ghost small" id="btn-file-reload" type="button">放弃修改</button>
+        <button class="primary small" id="btn-file-save" type="button">保存</button>
+        <button class="icon-btn" id="btn-file-close" type="button" title="关闭" aria-label="关闭">✕</button>
+      </div>
+    </div>
+    <div class="modal-body editor-body">
+      <aside class="file-side">
+        <div class="file-side-head">
+          <span class="file-side-title" id="file-side-title">领域文件</span>
+          <button class="ghost small" id="btn-file-new" type="button" hidden>新建</button>
+        </div>
+        <div class="file-list" id="file-list">
+          <div class="loading" aria-busy="true" aria-label="加载中">
+            <span class="skeleton skeleton-title"></span>
+            <div class="skeleton-lines"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div>
+          </div>
+        </div>
+      </aside>
+      <div class="file-main">
+        <div class="editor-wrap">
+          <pre class="editor-gutter" id="editor-gutter" aria-hidden="true"></pre>
+          <div class="editor-code" id="editor-code">
+            <div class="editor-current-line" id="editor-current-line" hidden></div>
+            <pre class="editor-highlight" id="editor-highlight" aria-hidden="true"></pre>
+            <textarea id="editor-text" spellcheck="false" wrap="off" autocomplete="off" placeholder="从左侧选择一个文件…"></textarea>
+          </div>
+        </div>
+        <div class="editor-foot">
+          <span class="hint mono" id="editor-status"></span>
+          <span class="hint" id="editor-msg"></span>
+        </div>
+      </div>
+    </div>
+    <div class="history-pane" id="history-pane" hidden>
+      <div class="history-head">
+        <span id="history-title">历史版本</span>
+        <button class="ghost small" type="button" id="btn-history-close">返回编辑</button>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 运行时配置 ============ -->
+<div class="modal" id="config-modal" hidden>
+  <div class="modal-backdrop" data-config-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="config-modal-title">
+    <div class="modal-head">
+      <span id="config-modal-title">运行时配置</span>
+      <div class="btn-row">
+        <span class="hint" id="config-env-path"></span>
+        <button class="ghost small" id="btn-config-close" type="button">关闭</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <p class="hint" id="config-note">这里写的是项目根下的 <code>agent/.env</code>。标了「必填」的项没配就跑不起来，点运行时会先拦住；其余项留空表示不设置该键（跟随上一项或使用内置默认）。改动下一次运行作业时生效，不需要重启控制台。</p>
+      <div class="config-alert" id="config-alert" hidden></div>
+      <div class="config-groups" id="config-groups">
+        <div class="loading" aria-busy="true" aria-label="加载中">
+          <span class="skeleton skeleton-title"></span>
+          <div class="skeleton-lines"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="hint" id="config-msg"></span>
+      <div class="btn-row">
+        <button class="primary small" id="btn-config-save" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 产物预览 ============ -->
+<div class="modal" id="preview-modal" hidden>
+  <div class="modal-backdrop" data-preview-close></div>
+  <div class="modal-card preview-card" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+    <div class="modal-head">
+      <span id="preview-title">预览</span>
+      <div class="btn-row">
+        <span class="hint" id="preview-meta"></span>
+        <button class="ghost small" id="btn-preview-close" type="button">关闭</button>
+      </div>
+    </div>
+    <div class="modal-body" id="preview-body"></div>
+  </div>
+</div>
+
+<!-- ============ 重启遮罩 ============ -->
+<!-- 重启期间后端是断的，整页按钮点下去只会静默失败，所以用遮罩把进度说明白：
+     等到第几次探测、等了多久、新进程什么时候起来的。
+     ★ 重启不改 PID（是 execv 原地换进程镜像），所以只能靠 startedAt 认新进程。 -->
+<div class="modal" id="restart-modal" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-card restart-card" role="dialog" aria-modal="true" aria-labelledby="restart-title">
+    <div class="modal-head">
+      <span id="restart-title">控制台正在重启</span>
+      <span class="hint mono" id="restart-old"></span>
+    </div>
+    <div class="modal-body">
+      <div class="restart-progress">
+        <span class="spinner" id="restart-spinner" aria-hidden="true"></span>
+        <div class="restart-text">
+          <strong id="restart-state">正在停止旧进程…</strong>
+          <span class="hint" id="restart-detail"></span>
+        </div>
+      </div>
+      <p class="hint" id="restart-note">重启只换掉这个控制台进程，磁盘上的产物、配置和运行历史都不受影响。新进程就绪后页面会自动刷新。</p>
+    </div>
+    <div class="modal-foot">
+      <span class="hint" id="restart-msg"></span>
+      <div class="btn-row">
+        <button class="ghost small" id="btn-restart-retry" type="button" hidden>继续等待</button>
+        <button class="primary small" id="btn-restart-reload" type="button" hidden>重新加载页面</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Agent 数据流水线控制台">
+  <rect width="64" height="64" rx="14" fill="#2563eb"/>
+  <path d="M32 13 51 32 32 51 13 32Z" fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M32 26.5 37.5 32 32 37.5 26.5 32Z" fill="#fff"/>
+</svg>
