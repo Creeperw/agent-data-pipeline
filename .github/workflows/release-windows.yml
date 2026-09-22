@@ -42,12 +42,21 @@ jobs:
           try {
             $ready = $false
             for ($i = 0; $i -lt 120; $i++) {
+              if ($process.HasExited) {
+                $log = Join-Path $data "logs\launcher.log"
+                if (Test-Path $log) { Get-Content $log }
+                throw "Packaged application exited before becoming ready (exit code $($process.ExitCode))"
+              }
               try {
-                $health = Invoke-RestMethod "http://127.0.0.1:8770/api/health"
+                $health = Invoke-RestMethod "http://127.0.0.1:8770/api/health" -TimeoutSec 1
                 if ($health.status -eq "ok") { $ready = $true; break }
               } catch { Start-Sleep -Milliseconds 250 }
             }
-            if (-not $ready) { throw "Packaged health check failed" }
+            if (-not $ready) {
+              $log = Join-Path $data "logs\launcher.log"
+              if (Test-Path $log) { Get-Content $log }
+              throw "Packaged health check failed"
+            }
           } finally {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
           }

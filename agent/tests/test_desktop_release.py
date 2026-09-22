@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 from fastapi.testclient import TestClient
 
@@ -20,6 +21,16 @@ def test_health_endpoint_is_lightweight() -> None:
 def test_free_port_is_bindable() -> None:
     port = launcher._free_port()
     assert 0 < port < 65536
+
+
+def test_uvicorn_config_supports_gui_without_standard_streams(monkeypatch) -> None:
+    with monkeypatch.context() as patch:
+        patch.setattr(sys, "stdout", None)
+        patch.setattr(sys, "stderr", None)
+        config = launcher._create_uvicorn_config(create_app(), "127.0.0.1", 8770)
+
+    assert config.log_config is None
+    assert config.access_log is False
 
 
 def test_stage_argv_dispatch() -> None:

@@ -120,6 +120,29 @@ def _show_fatal_error(message: str) -> None:
             pass
 
 
+def _create_uvicorn_config(app: object, host: str, port: int):
+    """Create a server config that also works in a ``console=False`` build.
+
+    PyInstaller's Windows GUI bootloader leaves ``sys.stdout`` and
+    ``sys.stderr`` unset.  Uvicorn's default colour-aware formatters inspect
+    ``isatty()`` on those streams during ``Config`` construction, so using the
+    default log config makes the desktop executable fail before it binds its
+    port.  The launcher already configures a persistent file logger; disabling
+    Uvicorn's console log config makes its records follow that logger instead.
+    """
+
+    import uvicorn
+
+    return uvicorn.Config(
+        app,
+        host=host,
+        port=port,
+        log_level="info",
+        access_log=False,
+        log_config=None,
+    )
+
+
 def main() -> int:
     _prepare_frozen_environment()
     log_file = _configure_file_logging() if getattr(sys, "frozen", False) else None
@@ -141,13 +164,7 @@ def main() -> int:
 
         record_launch([sys.executable, *sys.argv], cwd=os.getcwd())
         server = uvicorn.Server(
-            uvicorn.Config(
-                create_app(),
-                host=args.host,
-                port=port,
-                log_level="info",
-                access_log=False,
-            )
+            _create_uvicorn_config(create_app(), args.host, port)
         )
         thread = threading.Thread(target=server.run, daemon=True)
         thread.start()
